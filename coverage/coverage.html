@@ -1,0 +1,891 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>app: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">tg-bot/cmd/app/main.go (0.0%)</option>
+				
+				<option value="file1">tg-bot/internal/config/config.go (0.0%)</option>
+				
+				<option value="file2">tg-bot/internal/database/migrator.go (0.0%)</option>
+				
+				<option value="file3">tg-bot/internal/handler/commands/setcity.go (0.0%)</option>
+				
+				<option value="file4">tg-bot/internal/handler/commands/start.go (0.0%)</option>
+				
+				<option value="file5">tg-bot/internal/handler/commands/weather.go (0.0%)</option>
+				
+				<option value="file6">tg-bot/internal/handler/routes.go (0.0%)</option>
+				
+				<option value="file7">tg-bot/internal/handler/telegram.go (0.0%)</option>
+				
+				<option value="file8">tg-bot/internal/messages/messages.go (0.0%)</option>
+				
+				<option value="file9">tg-bot/internal/repository/repository.go (0.0%)</option>
+				
+				<option value="file10">tg-bot/internal/repository/users.go (0.0%)</option>
+				
+				<option value="file11">tg-bot/internal/service/weather_service.go (0.0%)</option>
+				
+				<option value="file12">tg-bot/pkg/logger/logger.go (0.0%)</option>
+				
+				<option value="file13">tg-bot/pkg/utils/utils.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+import (
+        "context"
+        "database/sql"
+        "log/slog"
+        "os"
+        "os/signal"
+        "syscall"
+        "tg-bot/internal/config"
+        "tg-bot/internal/database"
+        "tg-bot/internal/handler"
+        "tg-bot/internal/messages"
+        "tg-bot/internal/repository"
+        "tg-bot/internal/service"
+        "tg-bot/pkg/logger"
+        "tg-bot/pkg/utils"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+        _ "github.com/lib/pq"
+)
+func main() <span class="cov0" title="0">{
+        cfg, err := config.LoadConfig()
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to load config: " + err.Error())</span>
+        }
+        <span class="cov0" title="0">logger.Initialize(cfg)
+        slog.Info("config loaded successfully")
+        db, err := sql.Open("postgres", utils.GetDSN(cfg))
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to connect to database: " + err.Error())</span>
+        }
+        <span class="cov0" title="0">defer db.Close()
+        if err := db.Ping(); err != nil </span><span class="cov0" title="0">{
+                panic("failed to ping database: " + err.Error())</span>
+        }
+        <span class="cov0" title="0">slog.Info("database connected successfully")
+        if err := database.RunMigrations(db); err != nil </span><span class="cov0" title="0">{
+                panic("failed to run migrations: " + err.Error())</span>
+        }
+        <span class="cov0" title="0">slog.Info("migrations applied successfully")
+        repo := repository.New(db)
+        weatherService := service.NewWeatherService(cfg)
+        bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
+        if err != nil </span><span class="cov0" title="0">{
+                panic("failed to create telegram bot: " + err.Error())</span>
+        }
+        <span class="cov0" title="0">if cfg.Environment == "development" </span><span class="cov0" title="0">{
+                bot.Debug = true
+        }</span>
+        <span class="cov0" title="0">slog.Info("telegram bot authorized", "username", bot.Self.UserName)
+        telegramHandler := handler.NewTelegramHandler(bot, repo, weatherService, cfg, &amp;messages.BotMessages)
+        ctx, cancel := context.WithCancel(context.Background())
+        defer cancel()
+        go func() </span><span class="cov0" title="0">{
+                slog.Info("starting telegram bot...")
+                if err := telegramHandler.Start(); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("telegram bot error", "error", err)
+                        cancel()
+                }</span>
+        }()
+        <span class="cov0" title="0">go func() </span><span class="cov0" title="0">{
+                c := make(chan os.Signal, 1)
+                signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+                &lt;-c
+                slog.Info("shutting down gracefully...")
+                telegramHandler.Stop()
+                cancel()
+        }</span>()
+        <span class="cov0" title="0">slog.Info("application started")
+        &lt;-ctx.Done()
+        slog.Info("application stopped")</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+        "time"
+
+        "github.com/ilyakaznacheev/cleanenv"
+)
+
+type Config struct {
+        Database    DatabaseConfig `env-prefix:"DB_"`
+        Weather     WeatherConfig  `env-prefix:"WEATHER_"`
+        Log         LogConfig      `env-prefix:"LOG_"`
+        BotToken    string         `env:"BOT_TOKEN" env-required:"true"`
+        Environment string         `env:"ENVIRONMENT" env-default:"development"`
+}
+
+type DatabaseConfig struct {
+        Host     string `env:"HOST" env-default:"localhost"`
+        Port     int    `env:"PORT" env-default:"5432"`
+        User     string `env:"USER" env-default:"postgres"`
+        Password string `env:"PASSWORD" env-required:"true"`
+        Name     string `env:"NAME" env-default:"weather_bot"`
+}
+
+type WeatherConfig struct {
+        APIKey       string        `env:"API_KEY" env-required:"true"`
+        BaseURL      string        `env:"BASE_URL" env-default:"http://api.weatherapi.com/v1"`
+        RequestDelay time.Duration `env:"REQUEST_DELAY" env-default:"1s"`
+}
+
+type LogConfig struct {
+        Level  string `env:"LEVEL" env-default:"info"`
+        Format string `env:"FORMAT" env-default:"json"`
+}
+
+func LoadConfig() (*Config, error) <span class="cov0" title="0">{
+        cfg := &amp;Config{}
+        err := cleanenv.ReadEnv(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read config: %w", err)
+        }</span>
+        <span class="cov0" title="0">return cfg, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package database
+import (
+        "database/sql"
+        "fmt"
+        "log/slog"
+        "os"
+)
+func RunMigrations(db *sql.DB) error <span class="cov0" title="0">{
+        content, err := os.ReadFile("migrations/001_initial_schema.up.sql")
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to read migration file: %w", err)
+        }</span>
+        <span class="cov0" title="0">if _, err := db.Exec(string(content)); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to apply migration: %w", err)
+        }</span>
+        <span class="cov0" title="0">slog.Info("migrations applied successfully")
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package commands
+import (
+        "fmt"
+        "log/slog"
+        "strings"
+        "tg-bot/internal/messages"
+        "tg-bot/internal/repository"
+        "tg-bot/internal/service"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+func HandleSetCity(bot *tgbotapi.BotAPI, repo repository.Repository, weatherService *service.WeatherService, message *tgbotapi.Message, args []string, msg *messages.Messages) <span class="cov0" title="0">{
+        if len(args) == 0 </span><span class="cov0" title="0">{
+                if err := sendMessage(bot, message.Chat.ID, msg.SetCityHelp); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">userID := message.From.ID
+        chatID := message.Chat.ID
+        user, err := repo.GetUserByTelegramID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to get user", "error", err)
+                if err := sendMessage(bot, chatID, msg.DatabaseError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if user == nil </span><span class="cov0" title="0">{
+                if err := sendMessage(bot, chatID, msg.NeedRegistration); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">city := strings.Join(args, " ")
+        if err := sendMessage(bot, chatID, msg.CheckingCity); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send message", "error", err)
+        }</span>
+        <span class="cov0" title="0">weatherData, err := weatherService.ValidateCity(city)
+        if err != nil </span><span class="cov0" title="0">{
+                var responseText string
+                if strings.Contains(err.Error(), "city not found") </span><span class="cov0" title="0">{
+                        responseText = msg.CityNotFound
+                }</span> else<span class="cov0" title="0"> {
+                        slog.Error("weather API error", "error", err)
+                        responseText = msg.WeatherAPIError
+                }</span>
+                <span class="cov0" title="0">if err := sendMessage(bot, chatID, responseText); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">correctCityName := weatherData.Location.Name
+        err = repo.UpdateUserCity(userID, correctCityName)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to update user city", "error", err)
+                if err := sendMessage(bot, chatID, msg.DatabaseError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">currentWeather := formatCurrentWeather(weatherData)
+        responseText := msg.CityUpdated(correctCityName, currentWeather)
+        if err := sendMessage(bot, chatID, responseText); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send message", "error", err)
+        }</span>
+}
+func formatCurrentWeather(data *service.WeatherData) string <span class="cov0" title="0">{
+        temp := int(data.Current.TempC)
+        feelsLike := int(data.Current.FeelsLike)
+        description := data.Current.Condition.Text
+        emoji := getWeatherEmoji(description)
+        return fmt.Sprintf("%s *Сейчас:* %+d°C (ощущается как %+d°C)\n💧 Влажность: %d%%\n🌪 Ветер: %.1f км/ч\n%s",
+                emoji, temp, feelsLike, data.Current.Humidity, data.Current.WindKph, description)
+}</span>
+func getWeatherEmoji(description string) string <span class="cov0" title="0">{
+        desc := strings.ToLower(description)
+        switch </span>{
+        case strings.Contains(desc, "ясно") || strings.Contains(desc, "солнечно"):<span class="cov0" title="0">
+                return "☀️"</span>
+        case strings.Contains(desc, "облачно") || strings.Contains(desc, "пасмурно"):<span class="cov0" title="0">
+                return "☁️"</span>
+        case strings.Contains(desc, "дождь") || strings.Contains(desc, "ливень"):<span class="cov0" title="0">
+                return "🌧"</span>
+        case strings.Contains(desc, "снег"):<span class="cov0" title="0">
+                return "❄️"</span>
+        case strings.Contains(desc, "гроза") || strings.Contains(desc, "буря"):<span class="cov0" title="0">
+                return "⛈"</span>
+        case strings.Contains(desc, "туман") || strings.Contains(desc, "дымка"):<span class="cov0" title="0">
+                return "🌫"</span>
+        case strings.Contains(desc, "переменная"):<span class="cov0" title="0">
+                return "🌤"</span>
+        default:<span class="cov0" title="0">
+                return "🌤"</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package commands
+import (
+        "log/slog"
+        "tg-bot/internal/messages"
+        "tg-bot/internal/models"
+        "tg-bot/internal/repository"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+func HandleStart(bot *tgbotapi.BotAPI, repo repository.Repository, message *tgbotapi.Message, msg *messages.Messages) <span class="cov0" title="0">{
+        userID := message.From.ID
+        username := message.From.UserName
+        chatID := message.Chat.ID
+        user, err := repo.GetUserByTelegramID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to get user", "error", err)
+                if err := sendMessage(bot, chatID, msg.DatabaseError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if user != nil </span><span class="cov0" title="0">{
+                responseText := msg.UserAlreadyExists(username, user.City)
+                if err := sendMessage(bot, chatID, responseText); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send already exists message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">newUser := &amp;models.User{
+                TelegramID: userID,
+                Username:   username,
+                City:       "", 
+        }
+        err = repo.CreateUser(newUser)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to create user", "error", err)
+                if err := sendMessage(bot, chatID, msg.DatabaseError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send registration error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if err := sendMessage(bot, chatID, msg.FirstTimeWelcome); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send welcome message", "error", err)
+        }</span>
+}
+func sendMessage(bot *tgbotapi.BotAPI, chatID int64, text string) error <span class="cov0" title="0">{
+        msg := tgbotapi.NewMessage(chatID, text)
+        msg.ParseMode = tgbotapi.ModeMarkdown
+        _, err := bot.Send(msg)
+        return err
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package commands
+import (
+        "fmt"
+        "log/slog"
+        "strings"
+        "tg-bot/internal/messages"
+        "tg-bot/internal/repository"
+        "tg-bot/internal/service"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+func HandleWeather(bot *tgbotapi.BotAPI, repo repository.Repository, weatherService *service.WeatherService, message *tgbotapi.Message, msg *messages.Messages) <span class="cov0" title="0">{
+        userID := message.From.ID
+        chatID := message.Chat.ID
+        user, err := repo.GetUserByTelegramID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to get user", "error", err)
+                if err := sendMessage(bot, chatID, msg.DatabaseError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if user == nil </span><span class="cov0" title="0">{
+                if err := sendMessage(bot, chatID, msg.NeedRegistration); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if user.City == "" </span><span class="cov0" title="0">{
+                if err := sendMessage(bot, chatID, msg.NeedCity); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">if err := sendMessage(bot, chatID, msg.WeatherLoading); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send message", "error", err)
+        }</span>
+        <span class="cov0" title="0">currentWeather, err := weatherService.GetCurrentWeather(user.City)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to get current weather", "error", err)
+                if err := sendMessage(bot, chatID, msg.WeatherAPIError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">forecast, err := weatherService.GetForecast(user.City)
+        if err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to get forecast", "error", err)
+                if err := sendMessage(bot, chatID, msg.WeatherAPIError); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send error message", "error", err)
+                }</span>
+                <span class="cov0" title="0">return</span>
+        }
+        <span class="cov0" title="0">response := formatWeatherResponse(user.City, currentWeather, forecast)
+        if err := sendMessage(bot, chatID, response); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send weather response", "error", err)
+        }</span>
+}
+func formatWeatherResponse(city string, current *service.WeatherData, forecast *service.ForecastData) string <span class="cov0" title="0">{
+        var response strings.Builder
+        response.WriteString(fmt.Sprintf("🌤 *Прогноз погоды для города %s*\n\n", city))
+        currentTemp := int(current.Current.TempC)
+        currentFeels := int(current.Current.FeelsLike)
+        currentDesc := current.Current.Condition.Text
+        currentEmoji := getWeatherEmoji(currentDesc)
+        response.WriteString(fmt.Sprintf("%s *Сейчас:* %+d°C (ощущается как %+d°C)\n", currentEmoji, currentTemp, currentFeels))
+        response.WriteString(fmt.Sprintf("💧 Влажность: %d%%\n🌪 Ветер: %.1f км/ч\n", current.Current.Humidity, current.Current.WindKph))
+        response.WriteString(fmt.Sprintf("_%s_\n\n", currentDesc))
+        response.WriteString("📅 *Прогноз на 5 дней:*\n")
+        for i, day := range forecast.Forecast.ForecastDay </span><span class="cov0" title="0">{
+                if i &gt;= 5 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov0" title="0">dayName := getDayName(i)
+                maxTemp := int(day.Day.MaxTempC)
+                minTemp := int(day.Day.MinTempC)
+                dayDesc := day.Day.Condition.Text
+                dayEmoji := getWeatherEmoji(dayDesc)
+                response.WriteString(fmt.Sprintf("%s *%s:* %+d°C...%+d°C %s\n",
+                        dayEmoji, dayName, minTemp, maxTemp, dayDesc))</span>
+        }
+        <span class="cov0" title="0">return response.String()</span>
+}
+func getDayName(dayIndex int) string <span class="cov0" title="0">{
+        switch dayIndex </span>{
+        case 0:<span class="cov0" title="0">
+                return "Сегодня"</span>
+        case 1:<span class="cov0" title="0">
+                return "Завтра"</span>
+        case 2:<span class="cov0" title="0">
+                return "Послезавтра"</span>
+        default:<span class="cov0" title="0">
+                return fmt.Sprintf("День %d", dayIndex+1)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package handler
+import (
+        "log/slog"
+        "strings"
+        "tg-bot/internal/handler/commands"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+func (h *TelegramHandler) handleMessage(message *tgbotapi.Message) <span class="cov0" title="0">{
+        userID := message.From.ID
+        chatID := message.Chat.ID
+        text := message.Text
+        slog.Info("received message",
+                "user_id", userID,
+                "chat_id", chatID,
+                "text", text)
+        if message.IsCommand() </span><span class="cov0" title="0">{
+                h.handleCommand(message)
+                return
+        }</span>
+        <span class="cov0" title="0">if err := h.sendMessage(chatID, h.msg.NotACommand); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send message", "error", err, "chat_id", chatID)
+        }</span>
+}
+func (h *TelegramHandler) handleCommand(message *tgbotapi.Message) <span class="cov0" title="0">{
+        command := message.Command()
+        args := strings.Fields(message.CommandArguments())
+        switch command </span>{
+        case "start":<span class="cov0" title="0">
+                commands.HandleStart(h.bot, h.repo, message, h.msg)</span>
+        case "setcity":<span class="cov0" title="0">
+                commands.HandleSetCity(h.bot, h.repo, h.weatherService, message, args, h.msg)</span>
+        case "weather":<span class="cov0" title="0">
+                commands.HandleWeather(h.bot, h.repo, h.weatherService, message, h.msg)</span>
+        case "info":<span class="cov0" title="0">
+                h.handleInfo(message)</span>
+        default:<span class="cov0" title="0">
+                if err := h.sendMessage(message.Chat.ID, h.msg.UnknownCommand); err != nil </span><span class="cov0" title="0">{
+                        slog.Error("failed to send message", "error", err, "chat_id", message.Chat.ID)
+                }</span>
+        }
+}
+func (h *TelegramHandler) handleInfo(message *tgbotapi.Message) <span class="cov0" title="0">{
+        if err := h.sendMessage(message.Chat.ID, h.msg.CommandsList); err != nil </span><span class="cov0" title="0">{
+                slog.Error("failed to send info message", "error", err, "chat_id", message.Chat.ID)
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package handler
+import (
+        "log/slog"
+        "tg-bot/internal/config"
+        "tg-bot/internal/messages"
+        "tg-bot/internal/repository"
+        "tg-bot/internal/service"
+        tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
+type TelegramHandler struct {
+        bot            *tgbotapi.BotAPI
+        repo           repository.Repository
+        weatherService *service.WeatherService
+        cfg            *config.Config
+        msg            *messages.Messages
+}
+func NewTelegramHandler(bot *tgbotapi.BotAPI, repo repository.Repository, weatherService *service.WeatherService, cfg *config.Config, msg *messages.Messages) *TelegramHandler <span class="cov0" title="0">{
+        return &amp;TelegramHandler{
+                bot:            bot,
+                repo:           repo,
+                weatherService: weatherService,
+                cfg:            cfg,
+                msg:            msg,
+        }
+}</span>
+func (h *TelegramHandler) Start() error <span class="cov0" title="0">{
+        u := tgbotapi.NewUpdate(0)
+        u.Timeout = 60
+        updates := h.bot.GetUpdatesChan(u)
+        slog.Info("telegram bot started, listening for updates...")
+        for update := range updates </span><span class="cov0" title="0">{
+                if update.Message != nil </span><span class="cov0" title="0">{
+                        go h.handleMessage(update.Message)
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+func (h *TelegramHandler) Stop() <span class="cov0" title="0">{
+        h.bot.StopReceivingUpdates()
+}</span>
+func (h *TelegramHandler) sendMessage(chatID int64, text string) error <span class="cov0" title="0">{
+        msg := tgbotapi.NewMessage(chatID, text)
+        msg.ParseMode = tgbotapi.ModeMarkdown
+        _, err := h.bot.Send(msg)
+        return err
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package messages
+import "fmt"
+type Messages struct {
+        DatabaseError   string
+        WeatherAPIError string
+        CheckingCity   string
+        WeatherLoading string
+        CityUpdatedTmpl string
+        SetCityHelp      string
+        NeedCity         string
+        NeedRegistration string
+        UnknownCommand string
+        NotACommand    string
+        CityNotFound   string
+        FirstTimeWelcome      string
+        CommandsList          string
+        UserAlreadyExistsTmpl string
+}
+var BotMessages = Messages{
+        DatabaseError:   "Произошла внутренняя ошибка. Пожалуйста, попробуйте повторить Ваш запрос позже.",
+        WeatherAPIError: "Не удалось получить данные от сервиса погоды. Пожалуйста, попробуйте позже.",
+        CheckingCity:   "Проверяю информацию о городе...",
+        WeatherLoading: "Получаю прогноз погоды для Вас...",
+        CityUpdatedTmpl: "Ваш город успешно изменен на *%s*.\n\n%s\n\nЧтобы получить прогноз на неделю, используйте команду /weather.",
+        SetCityHelp:      "Пожалуйста, укажите название города после команды.\nНапример: /setcity Москва",
+        NeedCity:         "Пожалуйста, сначала укажите Ваш город с помощью команды /setcity.\nНапример: /setcity Москва",
+        NeedRegistration: "Похоже, Вы еще не начали работу с ботом. Пожалуйста, используйте команду /start.",
+        UnknownCommand: "Неизвестная команда. Пожалуйста, используйте /info, чтобы посмотреть список доступных команд.",
+        NotACommand:    "Я понимаю только команды, которые начинаются с символа '/'. Пожалуйста, используйте /info для просмотра списка команд.",
+        CityNotFound:   "К сожалению, город с таким названием не найден. Пожалуйста, проверьте правильность написания и попробуйте снова.",
+        FirstTimeWelcome: `*Добро пожаловать!*
+Я погодный бот. Чтобы начать работу, пожалуйста, укажите Ваш город.
+Например: /setcity Санкт-Петербург
+Для получения полного списка команд используйте /info.`,
+        CommandsList: `*Список доступных команд:*
+/start - Начало работы с ботом.
+/setcity [название города] - Установить или изменить Ваш город.
+/weather - Получить прогноз погоды для Вашего города.
+/info - Показать это справочное сообщение.`,
+        UserAlreadyExistsTmpl: "Рад Вас снова видеть, %s! Вы уже зарегистрированы. Ваш город: *%s*.",
+}
+func (m *Messages) CityUpdated(cityName, weatherInfo string) string <span class="cov0" title="0">{
+        return fmt.Sprintf(m.CityUpdatedTmpl, cityName, weatherInfo)
+}</span>
+func (m *Messages) UserAlreadyExists(userName, cityName string) string <span class="cov0" title="0">{
+        if cityName == "" </span><span class="cov0" title="0">{
+                cityName = "не указан. Пожалуйста, укажите его с помощью команды /setcity"
+        }</span>
+        <span class="cov0" title="0">return fmt.Sprintf(m.UserAlreadyExistsTmpl, userName, cityName)</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package repository
+import (
+        "database/sql"
+        "tg-bot/internal/models"
+)
+type Repository interface {
+        CreateUser(user *models.User) error
+        GetUserByTelegramID(telegramID int64) (*models.User, error)
+        UpdateUserCity(telegramID int64, city string) error
+}
+type repository struct {
+        db *sql.DB
+}
+func New(db *sql.DB) Repository <span class="cov0" title="0">{
+        return &amp;repository{db: db}
+}</span>
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package repository
+import (
+        "database/sql"
+        "tg-bot/internal/models"
+)
+func (r *repository) CreateUser(user *models.User) error <span class="cov0" title="0">{
+        query := `
+                INSERT INTO users (telegram_id, username, city) 
+                VALUES ($1, $2, $3) 
+                RETURNING id, created_at`
+        return r.db.QueryRow(query, user.TelegramID, user.Username, user.City).
+                Scan(&amp;user.ID, &amp;user.CreatedAt)
+}</span>
+func (r *repository) GetUserByTelegramID(telegramID int64) (*models.User, error) <span class="cov0" title="0">{
+        user := &amp;models.User{}
+        query := `
+                SELECT id, telegram_id, username, city, created_at 
+                FROM users 
+                WHERE telegram_id = $1`
+        err := r.db.QueryRow(query, telegramID).
+                Scan(&amp;user.ID, &amp;user.TelegramID, &amp;user.Username, &amp;user.City, &amp;user.CreatedAt)
+        if err == sql.ErrNoRows </span><span class="cov0" title="0">{
+                return nil, nil
+        }</span>
+        <span class="cov0" title="0">return user, err</span>
+}
+func (r *repository) UpdateUserCity(telegramID int64, city string) error <span class="cov0" title="0">{
+        query := `UPDATE users SET city = $1 WHERE telegram_id = $2`
+        _, err := r.db.Exec(query, city, telegramID)
+        return err
+}</span>
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package service
+import (
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "tg-bot/internal/config"
+        "time"
+)
+type WeatherService struct {
+        apiKey       string
+        baseURL      string
+        httpClient   *http.Client
+        requestDelay time.Duration
+}
+type WeatherData struct {
+        Location struct {
+                Name    string `json:"name"`
+                Country string `json:"country"`
+                TzId    string `json:"tz_id"`
+        } `json:"location"`
+        Current struct {
+                TempC     float64 `json:"temp_c"`
+                FeelsLike float64 `json:"feelslike_c"`
+                Humidity  int     `json:"humidity"`
+                WindKph   float64 `json:"wind_kph"`
+                Condition struct {
+                        Text string `json:"text"`
+                } `json:"condition"`
+        } `json:"current"`
+}
+type ForecastData struct {
+        Location struct {
+                Name string `json:"name"`
+                TzId string `json:"tz_id"`
+        } `json:"location"`
+        Forecast struct {
+                ForecastDay []struct {
+                        Date string `json:"date"`
+                        Day  struct {
+                                MaxTempC  float64 `json:"maxtemp_c"`
+                                MinTempC  float64 `json:"mintemp_c"`
+                                Condition struct {
+                                        Text string `json:"text"`
+                                } `json:"condition"`
+                        } `json:"day"`
+                        Hour []struct {
+                                Time      string  `json:"time"`
+                                TempC     float64 `json:"temp_c"`
+                                Condition struct {
+                                        Text string `json:"text"`
+                                } `json:"condition"`
+                        } `json:"hour"`
+                } `json:"forecastday"`
+        } `json:"forecast"`
+}
+func NewWeatherService(cfg *config.Config) *WeatherService <span class="cov0" title="0">{
+        return &amp;WeatherService{
+                apiKey:       cfg.Weather.APIKey,
+                baseURL:      cfg.Weather.BaseURL,
+                httpClient:   &amp;http.Client{Timeout: 10 * time.Second},
+                requestDelay: cfg.Weather.RequestDelay,
+        }
+}</span>
+func (w *WeatherService) ValidateCity(city string) (*WeatherData, error) <span class="cov0" title="0">{
+        data, err := w.getCurrentWeather(city)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">time.Sleep(w.requestDelay)
+        return data, nil</span>
+}
+func (w *WeatherService) GetCurrentWeather(city string) (*WeatherData, error) <span class="cov0" title="0">{
+        data, err := w.getCurrentWeather(city)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">time.Sleep(w.requestDelay)
+        return data, nil</span>
+}
+func (w *WeatherService) GetForecast(city string) (*ForecastData, error) <span class="cov0" title="0">{
+        u := fmt.Sprintf("%s/forecast.json?key=%s&amp;q=%s&amp;days=5&amp;lang=ru",
+                w.baseURL, w.apiKey, url.QueryEscape(city))
+        resp, err := w.httpClient.Get(u)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to make request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+        if resp.StatusCode == 400 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("city not found")
+        }</span>
+        <span class="cov0" title="0">if resp.StatusCode != 200 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+        }</span>
+        <span class="cov0" title="0">body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read response: %w", err)
+        }</span>
+        <span class="cov0" title="0">var forecast ForecastData
+        if err := json.Unmarshal(body, &amp;forecast); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+        <span class="cov0" title="0">time.Sleep(w.requestDelay)
+        return &amp;forecast, nil</span>
+}
+func (w *WeatherService) getCurrentWeather(city string) (*WeatherData, error) <span class="cov0" title="0">{
+        u := fmt.Sprintf("%s/current.json?key=%s&amp;q=%s&amp;lang=ru",
+                w.baseURL, w.apiKey, url.QueryEscape(city))
+        resp, err := w.httpClient.Get(u)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to make request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+        if resp.StatusCode == 400 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("city not found")
+        }</span>
+        <span class="cov0" title="0">if resp.StatusCode != 200 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("API error: %d", resp.StatusCode)
+        }</span>
+        <span class="cov0" title="0">body, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to read response: %w", err)
+        }</span>
+        <span class="cov0" title="0">var weather WeatherData
+        if err := json.Unmarshal(body, &amp;weather); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to parse response: %w", err)
+        }</span>
+        <span class="cov0" title="0">return &amp;weather, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package logger
+import (
+        "log/slog"
+        "os"
+        "strings"
+        "tg-bot/internal/config"
+)
+func Initialize(cfg *config.Config) <span class="cov0" title="0">{
+        var handler slog.Handler
+        level := parseLevel(cfg.Log.Level)
+        if strings.ToLower(cfg.Log.Format) == "text" </span><span class="cov0" title="0">{
+                handler = slog.NewTextHandler(os.Stdout, &amp;slog.HandlerOptions{Level: level})
+        }</span> else<span class="cov0" title="0"> {
+                handler = slog.NewJSONHandler(os.Stdout, &amp;slog.HandlerOptions{Level: level})
+        }</span>
+        <span class="cov0" title="0">slog.SetDefault(slog.New(handler))</span>
+}
+func parseLevel(level string) slog.Level <span class="cov0" title="0">{
+        switch strings.ToLower(level) </span>{
+        case "debug":<span class="cov0" title="0">
+                return slog.LevelDebug</span>
+        case "info":<span class="cov0" title="0">
+                return slog.LevelInfo</span>
+        case "warn", "warning":<span class="cov0" title="0">
+                return slog.LevelWarn</span>
+        case "error":<span class="cov0" title="0">
+                return slog.LevelError</span>
+        default:<span class="cov0" title="0">
+                return slog.LevelInfo</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">package utils
+import (
+        "fmt"
+        "tg-bot/internal/config"
+)
+func GetDSN(cfg *config.Config) string <span class="cov0" title="0">{
+        return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+                cfg.Database.Host,
+                cfg.Database.Port,
+                cfg.Database.User,
+                cfg.Database.Password,
+                cfg.Database.Name,
+        )
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
